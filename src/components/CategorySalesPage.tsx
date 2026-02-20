@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo, useCallback } from "react";
+import { useEffect, useState, useMemo, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -178,11 +178,23 @@ export function CategorySalesPage({
   const [minQty, setMinQty] = useState("");
   const [maxQty, setMaxQty] = useState("");
   const [minPrice, setMinPrice] = useState("");
-  const [maxPrice, setMaxPrice] = useState("");
   const [sectionFilter, setSectionFilter] = useState("");
   const [timeRange, setTimeRange] = useState<TimeRange>("all");
   const [customFrom, setCustomFrom] = useState("");
   const [customTo, setCustomTo] = useState("");
+  // Dropdown open states
+  const [openDropdown, setOpenDropdown] = useState<"section" | "qty" | "time" | null>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setOpenDropdown(null);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -272,7 +284,8 @@ export function CategorySalesPage({
     if (maxQty !== "") result = result.filter((s) => s.quantity <= Number(maxQty));
     // Price filters
     if (minPrice !== "") result = result.filter((s) => s.ticket_price >= Number(minPrice));
-    if (maxPrice !== "") result = result.filter((s) => s.ticket_price <= Number(maxPrice));
+    // Price filter (min only — single input)
+    if (minPrice !== "") result = result.filter((s) => s.ticket_price >= Number(minPrice));
     // Time range
     const [from, to] = getTimeRangeBounds();
     if (from) result = result.filter((s) => new Date(s.sold_at) >= from);
@@ -284,15 +297,15 @@ export function CategorySalesPage({
       return sortDir === "asc" ? av - bv : bv - av;
     });
     return result;
-  }, [sales, selectedEventId, tab, search, sortKey, sortDir, sectionFilter, minQty, maxQty, minPrice, maxPrice, getTimeRangeBounds]);
+  }, [sales, selectedEventId, tab, search, sortKey, sortDir, sectionFilter, minQty, maxQty, minPrice, getTimeRangeBounds]);
 
   const activeFilterCount = [
-    minQty, maxQty, minPrice, maxPrice, sectionFilter,
+    minQty, maxQty, minPrice, sectionFilter,
     timeRange !== "all" ? "t" : "",
   ].filter(Boolean).length;
 
   const clearFilters = () => {
-    setMinQty(""); setMaxQty(""); setMinPrice(""); setMaxPrice("");
+    setMinQty(""); setMaxQty(""); setMinPrice("");
     setSectionFilter(""); setTimeRange("all"); setCustomFrom(""); setCustomTo("");
     setPage(1);
   };
@@ -477,124 +490,172 @@ export function CategorySalesPage({
               ))}
             </div>
 
-            {/* Filters — always visible */}
-            <div className="rounded-lg border border-border bg-card p-4 space-y-3">
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {/* Filters — dropdown row */}
+            <div className="flex flex-wrap items-center gap-2" ref={dropdownRef}>
 
-                {/* Section */}
-                <div className="space-y-1.5">
-                  <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Section</label>
-                  <Input
-                    placeholder="e.g. Block M3"
-                    value={sectionFilter}
-                    onChange={(e) => { setSectionFilter(e.target.value); setPage(1); }}
-                    className="h-8 text-sm"
-                  />
-                </div>
-
-                {/* Quantity */}
-                <div className="space-y-1.5">
-                  <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Quantity</label>
-                  <div className="flex gap-1.5 items-center">
-                    <Input
-                      type="number"
-                      placeholder="Min"
-                      value={minQty}
-                      min={1}
-                      onChange={(e) => { setMinQty(e.target.value); setPage(1); }}
-                      className="h-8 text-sm"
-                    />
-                    <span className="text-muted-foreground text-xs shrink-0">–</span>
-                    <Input
-                      type="number"
-                      placeholder="Max"
-                      value={maxQty}
-                      min={1}
-                      onChange={(e) => { setMaxQty(e.target.value); setPage(1); }}
-                      className="h-8 text-sm"
-                    />
+              {/* Section dropdown */}
+              <div className="relative">
+                <button
+                  onClick={() => setOpenDropdown(openDropdown === "section" ? null : "section")}
+                  className={`flex items-center gap-2 h-9 px-3 rounded-md border text-sm font-medium transition-colors ${
+                    sectionFilter
+                      ? "border-primary/60 bg-primary/10 text-primary"
+                      : "border-border bg-card text-foreground hover:bg-accent/40"
+                  }`}
+                >
+                  Section{sectionFilter ? `: ${sectionFilter}` : ""}
+                  <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+                </button>
+                {openDropdown === "section" && (
+                  <div className="absolute top-full left-0 mt-1 z-50 min-w-[200px] rounded-md border border-border bg-card shadow-lg">
+                    <div className="p-2 border-b border-border">
+                      <Input
+                        autoFocus
+                        placeholder="Type section…"
+                        value={sectionFilter}
+                        onChange={(e) => { setSectionFilter(e.target.value); setPage(1); }}
+                        className="h-7 text-sm"
+                      />
+                    </div>
+                    <ul className="py-1 max-h-52 overflow-y-auto">
+                      <li>
+                        <button
+                          onClick={() => { setSectionFilter(""); setOpenDropdown(null); setPage(1); }}
+                          className="w-full text-left px-3 py-1.5 text-sm text-muted-foreground hover:bg-accent/50 hover:text-foreground"
+                        >
+                          All sections
+                        </button>
+                      </li>
+                      {Array.from(new Set(sales.map((s) => s.section).filter(Boolean))).sort().map((sec) => (
+                        <li key={sec}>
+                          <button
+                            onClick={() => { setSectionFilter(sec!); setOpenDropdown(null); setPage(1); }}
+                            className={`w-full text-left px-3 py-1.5 text-sm hover:bg-accent/50 hover:text-foreground ${sectionFilter === sec ? "text-primary font-semibold" : "text-foreground"}`}
+                          >
+                            {sec}
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
                   </div>
-                </div>
+                )}
+              </div>
 
-                {/* Price */}
-                <div className="space-y-1.5">
-                  <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Price (£)</label>
-                  <div className="flex gap-1.5 items-center">
-                    <Input
-                      type="number"
-                      placeholder="Min"
-                      value={minPrice}
-                      min={0}
-                      onChange={(e) => { setMinPrice(e.target.value); setPage(1); }}
-                      className="h-8 text-sm"
-                    />
-                    <span className="text-muted-foreground text-xs shrink-0">–</span>
-                    <Input
-                      type="number"
-                      placeholder="Max"
-                      value={maxPrice}
-                      min={0}
-                      onChange={(e) => { setMaxPrice(e.target.value); setPage(1); }}
-                      className="h-8 text-sm"
-                    />
+              {/* Quantity dropdown */}
+              <div className="relative">
+                <button
+                  onClick={() => setOpenDropdown(openDropdown === "qty" ? null : "qty")}
+                  className={`flex items-center gap-2 h-9 px-3 rounded-md border text-sm font-medium transition-colors ${
+                    minQty || maxQty
+                      ? "border-primary/60 bg-primary/10 text-primary"
+                      : "border-border bg-card text-foreground hover:bg-accent/40"
+                  }`}
+                >
+                  Qty{minQty || maxQty ? `: ${minQty || "any"}–${maxQty || "any"}` : ""}
+                  <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+                </button>
+                {openDropdown === "qty" && (
+                  <div className="absolute top-full left-0 mt-1 z-50 w-52 rounded-md border border-border bg-card shadow-lg p-3 space-y-2">
+                    <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">Quantity range</p>
+                    <div className="grid grid-cols-2 gap-2">
+                      {[1,2,3,4,5,6].map((n) => (
+                        <button
+                          key={n}
+                          onClick={() => { setMinQty(String(n)); setMaxQty(String(n)); setPage(1); }}
+                          className={`px-2 py-1.5 rounded text-sm font-medium border transition-colors ${
+                            minQty === String(n) && maxQty === String(n)
+                              ? "border-primary/60 bg-primary/10 text-primary"
+                              : "border-border text-foreground hover:bg-accent/50"
+                          }`}
+                        >
+                          {n} ticket{n > 1 ? "s" : ""}
+                        </button>
+                      ))}
+                    </div>
+                    <div className="border-t border-border pt-2 space-y-1.5">
+                      <p className="text-[11px] text-muted-foreground">Custom range</p>
+                      <div className="flex gap-1.5 items-center">
+                        <Input type="number" placeholder="Min" value={minQty} min={1}
+                          onChange={(e) => { setMinQty(e.target.value); setPage(1); }} className="h-7 text-sm" />
+                        <span className="text-muted-foreground text-xs">–</span>
+                        <Input type="number" placeholder="Max" value={maxQty} min={1}
+                          onChange={(e) => { setMaxQty(e.target.value); setPage(1); }} className="h-7 text-sm" />
+                      </div>
+                    </div>
+                    {(minQty || maxQty) && (
+                      <button onClick={() => { setMinQty(""); setMaxQty(""); setPage(1); }}
+                        className="w-full text-xs text-muted-foreground hover:text-foreground pt-1">
+                        Clear
+                      </button>
+                    )}
                   </div>
-                </div>
+                )}
+              </div>
 
-                {/* Time Range */}
-                <div className="space-y-1.5">
-                  <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Time Range</label>
-                  <div className="flex flex-wrap gap-1">
+              {/* Price input (single, always visible) */}
+              <div className="flex items-center gap-1.5 h-9 px-3 rounded-md border border-border bg-card">
+                <span className="text-xs text-muted-foreground font-medium">£ min</span>
+                <Input
+                  type="number"
+                  placeholder="Price…"
+                  value={minPrice}
+                  min={0}
+                  onChange={(e) => { setMinPrice(e.target.value); setPage(1); }}
+                  className="h-6 w-20 text-sm border-0 bg-transparent p-0 focus-visible:ring-0 focus-visible:ring-offset-0"
+                />
+                {minPrice && (
+                  <button onClick={() => { setMinPrice(""); setPage(1); }} className="text-muted-foreground hover:text-foreground">
+                    <X className="h-3 w-3" />
+                  </button>
+                )}
+              </div>
+
+              {/* Time Range dropdown */}
+              <div className="relative">
+                <button
+                  onClick={() => setOpenDropdown(openDropdown === "time" ? null : "time")}
+                  className={`flex items-center gap-2 h-9 px-3 rounded-md border text-sm font-medium transition-colors ${
+                    timeRange !== "all"
+                      ? "border-primary/60 bg-primary/10 text-primary"
+                      : "border-border bg-card text-foreground hover:bg-accent/40"
+                  }`}
+                >
+                  {timeRange === "all" ? "Time Range" : timeRange === "today" ? "Today" : timeRange === "7d" ? "Last 7 days" : timeRange === "30d" ? "Last 30 days" : timeRange === "90d" ? "Last 90 days" : "Custom range"}
+                  <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+                </button>
+                {openDropdown === "time" && (
+                  <div className="absolute top-full left-0 mt-1 z-50 w-52 rounded-md border border-border bg-card shadow-lg py-1">
                     {(["all", "today", "7d", "30d", "90d", "custom"] as TimeRange[]).map((r) => (
                       <button
                         key={r}
-                        onClick={() => { setTimeRange(r); setPage(1); }}
-                        className={`px-2 py-0.5 rounded text-[11px] font-semibold transition-colors border ${
-                          timeRange === r
-                            ? "bg-primary/15 border-primary/50 text-primary"
-                            : "border-border text-muted-foreground hover:text-foreground"
+                        onClick={() => { setTimeRange(r); setPage(1); if (r !== "custom") setOpenDropdown(null); }}
+                        className={`w-full text-left px-3 py-2 text-sm hover:bg-accent/50 hover:text-foreground transition-colors ${
+                          timeRange === r ? "text-primary font-semibold" : "text-foreground"
                         }`}
                       >
-                        {r === "all" ? "All" : r === "today" ? "Today" : r === "7d" ? "7d" : r === "30d" ? "30d" : r === "90d" ? "90d" : "Custom"}
+                        {r === "all" ? "All time" : r === "today" ? "Today" : r === "7d" ? "Last 7 days" : r === "30d" ? "Last 30 days" : r === "90d" ? "Last 90 days" : "Custom range"}
                       </button>
                     ))}
+                    {timeRange === "custom" && (
+                      <div className="px-3 pb-2 pt-1 border-t border-border space-y-1.5">
+                        <Input type="date" value={customFrom} onChange={(e) => { setCustomFrom(e.target.value); setPage(1); }} className="h-7 text-sm" />
+                        <Input type="date" value={customTo} onChange={(e) => { setCustomTo(e.target.value); setPage(1); }} className="h-7 text-sm" />
+                      </div>
+                    )}
                   </div>
-                </div>
-              </div>
-
-              {/* Custom date range */}
-              {timeRange === "custom" && (
-                <div className="flex gap-3 items-center pt-2 border-t border-border/50">
-                  <Calendar className="h-4 w-4 text-muted-foreground shrink-0" />
-                  <div className="flex gap-2 items-center flex-wrap">
-                    <Input
-                      type="date"
-                      value={customFrom}
-                      onChange={(e) => { setCustomFrom(e.target.value); setPage(1); }}
-                      className="h-8 text-sm w-36"
-                    />
-                    <span className="text-muted-foreground text-xs">to</span>
-                    <Input
-                      type="date"
-                      value={customTo}
-                      onChange={(e) => { setCustomTo(e.target.value); setPage(1); }}
-                      className="h-8 text-sm w-36"
-                    />
-                  </div>
-                </div>
-              )}
-
-              {/* Footer: count + clear + export */}
-              <div className="flex items-center gap-3 pt-1 border-t border-border/50">
-                <span className="text-xs text-muted-foreground">{filteredSales.length} of {sales.length} sales</span>
-                {activeFilterCount > 0 && (
-                  <Button variant="ghost" size="sm" onClick={clearFilters} className="gap-1.5 text-muted-foreground hover:text-foreground h-7 px-2 text-xs">
-                    <X className="h-3 w-3" /> Clear filters
-                  </Button>
                 )}
-                <Button variant="outline" size="sm" onClick={exportCSV} className="ml-auto gap-1.5">
-                  <Download className="h-3.5 w-3.5" />Export CSV
-                </Button>
               </div>
+
+              {/* Count + clear + export */}
+              <span className="text-xs text-muted-foreground ml-1">{filteredSales.length} of {sales.length}</span>
+              {activeFilterCount > 0 && (
+                <Button variant="ghost" size="sm" onClick={clearFilters} className="gap-1 text-muted-foreground hover:text-foreground h-8 px-2 text-xs">
+                  <X className="h-3 w-3" /> Clear
+                </Button>
+              )}
+              <Button variant="outline" size="sm" onClick={exportCSV} className="ml-auto gap-1.5">
+                <Download className="h-3.5 w-3.5" />Export CSV
+              </Button>
             </div>
 
             {/* Table */}
