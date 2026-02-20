@@ -12,6 +12,8 @@ import {
 } from "lucide-react";
 
 type Tab = "games" | "all" | "lft" | "tixstock";
+type HomeAwayFilter = "all" | "home" | "away";
+
 
 interface EventWithStats {
   id: string;
@@ -51,19 +53,35 @@ function EventCard({ ev, onClick, homeTeam }: { ev: EventWithStats; onClick: () 
   const [home, away] = parseTeams(ev.name);
   const slug = ev.name.toUpperCase().replace(/\s+VS\.?\s+/i, "-VS-").replace(/\s/g, "-").slice(0, 22);
 
-  // For club pages, determine if this team is playing at home or away
-  const isHome = homeTeam ? home.toLowerCase().includes(homeTeam.toLowerCase()) : null;
-  const matchLabel = isHome === true ? "HOME" : isHome === false ? "AWAY" : null;
-  const matchLabelStyle = isHome === true
-    ? { background: "hsl(142,72%,15%)", color: "hsl(142,72%,55%)", border: "1px solid hsl(142,72%,30%)" }
+  // Determine home/away for club pages
+  const isHome = homeTeam
+    ? home.toLowerCase().includes(homeTeam.toLowerCase())
+    : null;
+
+  // Card highlight styles
+  const cardStyle = isHome === true
+    ? { borderColor: "hsl(32,95%,50%)", boxShadow: "0 0 0 1px hsl(32,95%,50%), inset 0 0 40px hsl(32,95%,50%,0.08)" }
     : isHome === false
-    ? { background: "hsl(220,80%,15%)", color: "hsl(220,80%,65%)", border: "1px solid hsl(220,80%,30%)" }
-    : undefined;
+    ? { borderColor: "hsl(220,85%,55%)", boxShadow: "0 0 0 1px hsl(220,85%,55%), inset 0 0 40px hsl(220,85%,55%,0.08)" }
+    : {};
+
+  const cardBg = isHome === true
+    ? "bg-orange-950/30"
+    : isHome === false
+    ? "bg-blue-950/30"
+    : "";
 
   return (
     <Card
       onClick={onClick}
-      className="cursor-pointer hover:border-primary/50 transition-all hover:shadow-lg hover:shadow-primary/5 group"
+      style={cardStyle}
+      className={`cursor-pointer transition-all hover:shadow-lg group border ${cardBg} ${
+        isHome === true
+          ? "hover:border-orange-400/80"
+          : isHome === false
+          ? "hover:border-blue-400/80"
+          : "hover:border-primary/50 hover:shadow-primary/5"
+      }`}
     >
       <CardContent className="p-5">
         <div className="flex items-start justify-between mb-3">
@@ -71,9 +89,14 @@ function EventCard({ ev, onClick, homeTeam }: { ev: EventWithStats; onClick: () 
             <span className="text-[10px] font-bold text-muted-foreground tracking-wider px-2 py-0.5 rounded bg-secondary">
               {slug}
             </span>
-            {matchLabel && (
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded" style={matchLabelStyle}>
-                {matchLabel}
+            {isHome === true && (
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded" style={{ background: "hsl(32,95%,15%)", color: "hsl(32,95%,60%)", border: "1px solid hsl(32,95%,35%)" }}>
+                HOME
+              </span>
+            )}
+            {isHome === false && (
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded" style={{ background: "hsl(220,85%,15%)", color: "hsl(220,85%,65%)", border: "1px solid hsl(220,85%,35%)" }}>
+                AWAY
               </span>
             )}
           </div>
@@ -139,6 +162,7 @@ export function CategorySalesPage({
   homeTeam?: string;
 }) {
   const [tab, setTab] = useState<Tab>("games");
+  const [homeAwayFilter, setHomeAwayFilter] = useState<HomeAwayFilter>("all");
   const [events, setEvents] = useState<EventWithStats[]>([]);
   const [sales, setSales] = useState<Sale[]>([]);
   const [loading, setLoading] = useState(true);
@@ -269,10 +293,17 @@ export function CategorySalesPage({
         : "border-transparent text-muted-foreground hover:text-foreground"
     }`;
 
-  // Games grid
-  const filteredEvents = events.filter((ev) =>
-    !search || ev.name.toLowerCase().includes(search.toLowerCase())
-  );
+  // Games grid — search + home/away filter
+  const filteredEvents = events.filter((ev) => {
+    if (search && !ev.name.toLowerCase().includes(search.toLowerCase())) return false;
+    if (homeTeam && homeAwayFilter !== "all") {
+      const [home] = parseTeams(ev.name);
+      const isHome = home.toLowerCase().includes(homeTeam.toLowerCase());
+      if (homeAwayFilter === "home" && !isHome) return false;
+      if (homeAwayFilter === "away" && isHome) return false;
+    }
+    return true;
+  });
 
   return (
     <div className="flex flex-col h-full">
@@ -319,14 +350,38 @@ export function CategorySalesPage({
         {/* Games Grid */}
         {tab === "games" && (
           <>
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search events…"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="pl-9 max-w-sm"
-              />
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search events…"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="pl-9 max-w-xs"
+                />
+              </div>
+              {homeTeam && (
+                <div className="flex items-center gap-1.5 rounded-lg border border-border p-0.5">
+                  {(["all", "home", "away"] as HomeAwayFilter[]).map((f) => (
+                    <button
+                      key={f}
+                      onClick={() => setHomeAwayFilter(f)}
+                      className={`px-3 py-1.5 rounded-md text-xs font-bold transition-colors ${
+                        homeAwayFilter === f
+                          ? f === "home"
+                            ? "text-orange-300 bg-orange-950/60 border border-orange-500/40"
+                            : f === "away"
+                            ? "text-blue-300 bg-blue-950/60 border border-blue-500/40"
+                            : "text-foreground bg-secondary border border-border"
+                          : "text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      {f.toUpperCase()}
+                    </button>
+                  ))}
+                </div>
+              )}
+              <span className="text-xs text-muted-foreground ml-auto">{filteredEvents.length} events</span>
             </div>
             {loading ? (
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
