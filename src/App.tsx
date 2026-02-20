@@ -11,6 +11,7 @@ import LiverpoolPage from "./pages/LiverpoolPage";
 import ArsenalPage from "./pages/ArsenalPage";
 import AnalyticsPage from "./pages/AnalyticsPage";
 import HealthPage from "./pages/HealthPage";
+import MarketPage from "./pages/MarketPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -40,7 +41,8 @@ const App = () => (
         <AuthGuard>
           <AppLayout>
             <Routes>
-              <Route path="/" element={<Navigate to="/liverpool" replace />} />
+              <Route path="/" element={<Navigate to="/market" replace />} />
+              <Route path="/market" element={<MarketPage />} />
               <Route path="/liverpool" element={<LiverpoolPage />} />
               <Route path="/arsenal" element={<ArsenalPage />} />
               <Route path="/world-cup" element={<WorldCupPage />} />
