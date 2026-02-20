@@ -2,14 +2,13 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { AuthGuard } from "@/components/AuthGuard";
-import Index from "./pages/Index";
-import SalesPage from "./pages/SalesPage";
-import EventsPage from "./pages/EventsPage";
-import AddSalePage from "./pages/AddSalePage";
+import WorldCupPage from "./pages/WorldCupPage";
+import LiverpoolPage from "./pages/LiverpoolPage";
+import AnalyticsPage from "./pages/AnalyticsPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -39,10 +38,10 @@ const App = () => (
         <AuthGuard>
           <AppLayout>
             <Routes>
-              <Route path="/" element={<Index />} />
-              <Route path="/sales" element={<SalesPage />} />
-              <Route path="/events" element={<EventsPage />} />
-              <Route path="/add-sale" element={<AddSalePage />} />
+              <Route path="/" element={<Navigate to="/world-cup" replace />} />
+              <Route path="/world-cup" element={<WorldCupPage />} />
+              <Route path="/liverpool" element={<LiverpoolPage />} />
+              <Route path="/analytics" element={<AnalyticsPage />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </AppLayout>
