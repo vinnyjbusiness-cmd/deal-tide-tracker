@@ -9,6 +9,7 @@ import { AuthGuard } from "@/components/AuthGuard";
 import WorldCupPage from "./pages/WorldCupPage";
 import LiverpoolPage from "./pages/LiverpoolPage";
 import ArsenalPage from "./pages/ArsenalPage";
+import AnalyticsPage from "./pages/AnalyticsPage";
 import HealthPage from "./pages/HealthPage";
 import NotFound from "./pages/NotFound";
 
@@ -43,6 +44,7 @@ const App = () => (
               <Route path="/liverpool" element={<LiverpoolPage />} />
               <Route path="/arsenal" element={<ArsenalPage />} />
               <Route path="/world-cup" element={<WorldCupPage />} />
+              <Route path="/analytics" element={<AnalyticsPage />} />
               <Route path="/health" element={<HealthPage />} />
               <Route path="*" element={<NotFound />} />
             </Routes>

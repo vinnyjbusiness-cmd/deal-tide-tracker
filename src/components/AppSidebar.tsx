@@ -1,4 +1,4 @@
-import { Globe, Activity, LucideIcon } from "lucide-react";
+import { Globe, Activity, LucideIcon, BarChart2 } from "lucide-react";
 import { useLocation } from "react-router-dom";
 import {
   Sidebar,
@@ -24,6 +24,7 @@ const navItems: NavItem[] = [
   { title: "Liverpool", url: "/liverpool", badge: "Liverpool" },
   { title: "Arsenal", url: "/arsenal", badge: "Arsenal" },
   { title: "World Cup", url: "/world-cup", icon: Globe },
+  { title: "Analytics", url: "/analytics", icon: BarChart2 },
   { title: "Health", url: "/health", icon: Activity },
 ];
 
