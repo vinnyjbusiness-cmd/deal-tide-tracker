@@ -55,18 +55,20 @@ export default function HeatmapPage() {
       date: d.date,
     }));
 
-    // Compute relative size
-    const maxRev = Math.max(...entries.map((e) => e.revenue), 1);
+    // Size is ALWAYS based on units sold
     const maxUnits = Math.max(...entries.map((e) => e.units), 1);
     const maxAvg = Math.max(...entries.map((e) => e.avgPrice), 1);
 
+    // Global median avg price for colour signal
+    const sorted = [...entries].sort((a, b) => a.avgPrice - b.avgPrice);
+    const globalMedian = sorted.length ? sorted[Math.floor(sorted.length / 2)].avgPrice : 0;
+
     return entries
       .map((e) => {
-        const metricVal = metric === "revenue" ? e.revenue / maxRev : metric === "units" ? e.units / maxUnits : e.avgPrice / maxAvg;
-        // Derive a momentum signal: events with avg_price > global median = positive
-        const globalMedian = entries.length ? entries.sort((a, b) => a.avgPrice - b.avgPrice)[Math.floor(entries.length / 2)].avgPrice : 0;
+        // Size always = units share; metric selector only changes the displayed label value
+        const sizeNorm = e.units / maxUnits;
         const change = ((e.avgPrice - globalMedian) / (globalMedian || 1)) * 100;
-        return { ...e, revenueShare: metricVal, change };
+        return { ...e, revenueShare: sizeNorm, change };
       })
       .sort((a, b) => b.revenueShare - a.revenueShare)
       .slice(0, 40);
@@ -127,7 +129,7 @@ export default function HeatmapPage() {
               Market Map
             </h1>
             <p className="text-xs text-muted-foreground mt-0.5">
-              Bubble size = {metric === "revenue" ? "revenue" : metric === "units" ? "units sold" : "avg price"} · Green = above median price · Red = below median
+              Bubble size = units sold · Colour metric = {metric === "revenue" ? "revenue" : metric === "units" ? "units sold" : "avg price"} · Green = above median price · Red = below median
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -256,6 +258,11 @@ export default function HeatmapPage() {
                           {isPos ? <TrendingUp className="h-2.5 w-2.5" /> : <TrendingDown className="h-2.5 w-2.5" />}
                           {isPos ? "+" : ""}{b.change.toFixed(1)}%
                         </div>
+                        {b.date && (
+                          <span className="text-white/60 leading-tight" style={{ fontSize: `${Math.max(8, fs - 2)}px` }}>
+                            {format(new Date(b.date), "d MMM yy")}
+                          </span>
+                        )}
                       </div>
                     )}
                   </div>
