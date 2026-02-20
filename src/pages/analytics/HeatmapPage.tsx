@@ -9,7 +9,7 @@ import { AnalyticsTabs } from "@/components/analytics/AnalyticsTabs";
 const fmt = (n: number) =>
   new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP", maximumFractionDigits: 0 }).format(n);
 
-type BubbleMetric = "revenue" | "units" | "avg_price";
+type BubbleMetric = "tickets" | "orders" | "avg_price";
 
 interface EventBubble {
   id: string;
@@ -17,29 +17,30 @@ interface EventBubble {
   shortName: string;
   revenue: number;
   units: number;
+  orders: number;
   avgPrice: number;
-  revenueShare: number; // 0-1 relative to max
-  change: number; // fake momentum: positive = green, negative = red
+  revenueShare: number;
+  change: number;
   category: string;
   date: string | null;
 }
 
 export default function HeatmapPage() {
   const [teamTab, setTeamTab] = useState<TeamTab>("all");
-  const [metric, setMetric] = useState<BubbleMetric>("revenue");
+  const [metric, setMetric] = useState<BubbleMetric>("tickets");
   const [hovered, setHovered] = useState<string | null>(null);
   const { sales, loading, updatedAt, refetch } = useAnalyticsData(teamTab);
 
   const bubbles = useMemo((): EventBubble[] => {
-    const map: Record<string, { name: string; revenue: number; units: number; count: number; category: string; date: string | null }> = {};
+    const map: Record<string, { name: string; revenue: number; units: number; orders: number; category: string; date: string | null }> = {};
 
     sales.forEach((s) => {
       const id = s.event_id ?? "unknown";
       const name = s.events?.name ?? "Unknown";
-      if (!map[id]) map[id] = { name, revenue: 0, units: 0, count: 0, category: s.events?.categories?.name ?? "", date: s.events?.event_date ?? null };
+      if (!map[id]) map[id] = { name, revenue: 0, units: 0, orders: 0, category: s.events?.categories?.name ?? "", date: s.events?.event_date ?? null };
       map[id].revenue += s.ticket_price * s.quantity;
       map[id].units += s.quantity;
-      map[id].count += 1;
+      map[id].orders += 1;
     });
 
     const entries = Object.entries(map).map(([id, d]) => ({
@@ -48,6 +49,7 @@ export default function HeatmapPage() {
       shortName: d.name.length > 22 ? d.name.slice(0, 20) + "…" : d.name,
       revenue: d.revenue,
       units: d.units,
+      orders: d.orders,
       avgPrice: d.units > 0 ? d.revenue / d.units : 0,
       revenueShare: 0,
       change: 0,
@@ -107,14 +109,14 @@ export default function HeatmapPage() {
   }
 
   const metricBtns: { id: BubbleMetric; label: string }[] = [
-    { id: "revenue", label: "Revenue" },
-    { id: "units", label: "Units Sold" },
+    { id: "tickets", label: "Tickets Sold" },
+    { id: "orders", label: "Orders" },
     { id: "avg_price", label: "Avg Price" },
   ];
 
   const metricLabel = (b: EventBubble) => {
-    if (metric === "revenue") return fmt(b.revenue);
-    if (metric === "units") return `${b.units} units`;
+    if (metric === "tickets") return `${b.units} tickets`;
+    if (metric === "orders") return `${b.orders} orders`;
     return fmt(b.avgPrice);
   };
 
@@ -129,7 +131,7 @@ export default function HeatmapPage() {
               Market Map
             </h1>
             <p className="text-xs text-muted-foreground mt-0.5">
-              Bubble size = units sold · Colour metric = {metric === "revenue" ? "revenue" : metric === "units" ? "units sold" : "avg price"} · Green = above median price · Red = below median
+              Bubble size = tickets sold · Colour = {metric === "tickets" ? "tickets sold" : metric === "orders" ? "orders" : "avg price"} · Green = above median price · Red = below median
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -182,7 +184,7 @@ export default function HeatmapPage() {
                 Below median price
               </div>
               <div className="flex items-center gap-1.5 ml-auto">
-                <span>Larger bubble = higher {metric === "revenue" ? "revenue" : metric === "units" ? "units" : "avg price"}</span>
+                <span>Larger bubble = more {metric === "tickets" ? "tickets sold" : metric === "orders" ? "orders" : "avg price"}</span>
               </div>
             </div>
 
@@ -220,9 +222,9 @@ export default function HeatmapPage() {
                           {b.name}
                         </span>
                         <div className="flex flex-col gap-0.5 text-center mt-1">
-                          <span className="text-muted-foreground" style={{ fontSize: "9px" }}>Revenue</span>
-                          <span className="text-foreground font-bold" style={{ fontSize: "11px" }}>{fmt(b.revenue)}</span>
-                          <span className="text-muted-foreground" style={{ fontSize: "9px" }}>Units: {b.units} · Avg: {fmt(b.avgPrice)}</span>
+                          <span className="text-muted-foreground" style={{ fontSize: "9px" }}>Tickets Sold</span>
+                          <span className="text-foreground font-bold" style={{ fontSize: "11px" }}>{b.units} tickets</span>
+                          <span className="text-muted-foreground" style={{ fontSize: "9px" }}>{b.orders} orders · Avg {fmt(b.avgPrice)}</span>
                         </div>
                         <div className={`flex items-center gap-0.5 mt-1 ${isPos ? "text-green-400" : "text-red-400"}`} style={{ fontSize: "10px" }}>
                           {isPos ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
