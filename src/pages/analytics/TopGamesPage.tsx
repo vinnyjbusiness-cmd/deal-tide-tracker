@@ -23,6 +23,7 @@ interface GameRow {
   sale_count: number;
   lft_rev: number;
   tix_rev: number;
+  fanpass_rev?: number;
 }
 
 const MEDALS = ["🥇", "🥈", "🥉"];
@@ -39,7 +40,7 @@ export default function TopGamesPage() {
       if (!byEvent[id]) {
         byEvent[id] = {
           id, name: s.events?.name ?? "Unknown", event_date: s.events?.event_date ?? null,
-          revenue: 0, units: 0, avg_price: 0, sale_count: 0, lft_rev: 0, tix_rev: 0,
+          revenue: 0, units: 0, avg_price: 0, sale_count: 0, lft_rev: 0, tix_rev: 0, fanpass_rev: 0,
         };
       }
       const rev = s.ticket_price * s.quantity;
@@ -47,6 +48,7 @@ export default function TopGamesPage() {
       byEvent[id].units += s.quantity;
       byEvent[id].sale_count += 1;
       if (s.platform === "LiveFootballTickets") byEvent[id].lft_rev += rev;
+      else if (s.platform === "Fanpass") byEvent[id].fanpass_rev = (byEvent[id].fanpass_rev ?? 0) + rev;
       else byEvent[id].tix_rev += rev;
     });
     return Object.values(byEvent).map((g) => ({
@@ -59,6 +61,7 @@ export default function TopGamesPage() {
     name: g.name.length > 16 ? g.name.slice(0, 14) + "…" : g.name,
     LFT: Math.round(g.lft_rev),
     Tixstock: Math.round(g.tix_rev),
+    Fanpass: Math.round(g.fanpass_rev ?? 0),
   }));
 
   const metricBtns: { id: SortMetric; label: string }[] = [
@@ -127,7 +130,8 @@ export default function TopGamesPage() {
                     <YAxis tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} tickLine={false} axisLine={false} tickFormatter={(v) => `£${Math.round(v / 1000)}k`} />
                     <Tooltip content={<ChartTip />} />
                     <Bar dataKey="LFT" stackId="a" fill="hsl(142,72%,40%)" radius={[0, 0, 0, 0]} />
-                    <Bar dataKey="Tixstock" stackId="a" fill="hsl(200,80%,50%)" radius={[3, 3, 0, 0]} />
+                    <Bar dataKey="Tixstock" stackId="a" fill="hsl(200,80%,50%)" radius={[0, 0, 0, 0]} />
+                    <Bar dataKey="Fanpass" stackId="a" fill="hsl(280,70%,55%)" radius={[3, 3, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </CardContent>
@@ -145,7 +149,7 @@ export default function TopGamesPage() {
                       <th className="text-right px-4 py-3 text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Units</th>
                       <th className="text-right px-4 py-3 text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Avg £</th>
                       <th className="text-right px-4 py-3 text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Sales</th>
-                      <th className="text-right px-4 py-3 text-[10px] font-bold text-muted-foreground uppercase tracking-wider hidden md:table-cell">LFT vs Tix</th>
+                      <th className="text-right px-4 py-3 text-[10px] font-bold text-muted-foreground uppercase tracking-wider hidden md:table-cell">Platform Split</th>
                     </tr>
                   </thead>
                   <tbody>

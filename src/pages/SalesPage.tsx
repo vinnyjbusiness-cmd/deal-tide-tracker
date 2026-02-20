@@ -155,6 +155,7 @@ export default function SalesPage() {
             <SelectItem value="all">All Platforms</SelectItem>
             <SelectItem value="LiveFootballTickets">LiveFootballTickets</SelectItem>
             <SelectItem value="Tixstock">Tixstock</SelectItem>
+            <SelectItem value="Fanpass">Fanpass</SelectItem>
           </SelectContent>
         </Select>
         <Select value={category} onValueChange={(v) => { setCategory(v); setPage(1); }}>
@@ -211,8 +212,8 @@ export default function SalesPage() {
                       <td className="px-4 py-3 text-muted-foreground">{sale.quantity}</td>
                       <td className="px-4 py-3 text-foreground font-medium">{fmt(sale.ticket_price)}</td>
                       <td className="px-4 py-3">
-                        <Badge variant="outline" className={sale.platform === "LiveFootballTickets" ? "text-primary border-primary/30" : "text-chart-2 border-chart-2/30"}>
-                          {sale.platform === "LiveFootballTickets" ? "LFT" : "Tixstock"}
+                        <Badge variant="outline" className={sale.platform === "LiveFootballTickets" ? "text-primary border-primary/30" : sale.platform === "Fanpass" ? "text-chart-4 border-chart-4/30" : "text-chart-2 border-chart-2/30"}>
+                          {sale.platform === "LiveFootballTickets" ? "LFT" : sale.platform === "Fanpass" ? "Fanpass" : "Tixstock"}
                         </Badge>
                       </td>
                       <td className="px-4 py-3 text-muted-foreground text-xs whitespace-nowrap">{format(new Date(sale.sold_at), "dd MMM yy, HH:mm")}</td>
