@@ -11,7 +11,7 @@ import {
   ChevronUp, ChevronDown, ChevronsUpDown, Calendar, X,
 } from "lucide-react";
 
-type Tab = "games" | "all" | "lft" | "tixstock";
+type Tab = "games" | "all" | "lft" | "tixstock" | "fanpass";
 type HomeAwayFilter = "all" | "home" | "away";
 type TimeRange = "all" | "today" | "7d" | "30d" | "90d" | "custom";
 
@@ -47,6 +47,8 @@ const fmt = (n: number) =>
 function PlatformBadge({ platform }: { platform: string }) {
   if (platform === "LiveFootballTickets")
     return <span className="px-2 py-0.5 rounded text-[11px] font-bold" style={{ background: "hsl(142,72%,15%)", color: "hsl(142,72%,55%)", border: "1px solid hsl(142,72%,30%)" }}>LFT</span>;
+  if (platform === "Fanpass")
+    return <span className="px-2 py-0.5 rounded text-[11px] font-bold" style={{ background: "hsl(280,70%,15%)", color: "hsl(280,70%,65%)", border: "1px solid hsl(280,70%,30%)" }}>FANPASS</span>;
   return <span className="px-2 py-0.5 rounded text-[11px] font-bold" style={{ background: "hsl(200,80%,12%)", color: "hsl(200,80%,60%)", border: "1px solid hsl(200,80%,25%)" }}>TIXSTOCK</span>;
 }
 
@@ -268,6 +270,7 @@ export function CategorySalesPage({
     if (selectedEventId) result = result.filter((s) => s.event_id === selectedEventId);
     if (tab === "lft") result = result.filter((s) => s.platform === "LiveFootballTickets");
     if (tab === "tixstock") result = result.filter((s) => s.platform === "Tixstock");
+    if (tab === "fanpass") result = result.filter((s) => s.platform === "Fanpass");
     if (search) {
       const q = search.toLowerCase();
       result = result.filter(
@@ -317,6 +320,7 @@ export function CategorySalesPage({
   const totalTickets = filteredSales.reduce((acc, s) => acc + s.quantity, 0);
   const lftCount = filteredSales.filter((s) => s.platform === "LiveFootballTickets").length;
   const tixCount = filteredSales.filter((s) => s.platform === "Tixstock").length;
+  const fanpassCount = filteredSales.filter((s) => s.platform === "Fanpass").length;
 
   const handleSort = (key: SortKey) => {
     if (sortKey === key) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
@@ -409,6 +413,7 @@ export function CategorySalesPage({
         <button className={tabCls("all")} onClick={() => setTab("all")}>All Sales</button>
         <button className={tabCls("lft")} onClick={() => setTab("lft")} style={{ color: tab === "lft" ? "hsl(142,72%,55%)" : undefined, borderColor: tab === "lft" ? "hsl(142,72%,55%)" : undefined }}>LFT</button>
         <button className={tabCls("tixstock")} onClick={() => setTab("tixstock")} style={{ color: tab === "tixstock" ? "hsl(200,80%,60%)" : undefined, borderColor: tab === "tixstock" ? "hsl(200,80%,60%)" : undefined }}>Tixstock</button>
+        <button className={tabCls("fanpass")} onClick={() => setTab("fanpass")} style={{ color: tab === "fanpass" ? "hsl(280,70%,65%)" : undefined, borderColor: tab === "fanpass" ? "hsl(280,70%,65%)" : undefined }}>Fanpass</button>
       </div>
 
       <div className="flex-1 overflow-auto p-6 space-y-5">
