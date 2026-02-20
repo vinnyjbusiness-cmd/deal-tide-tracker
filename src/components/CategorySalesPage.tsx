@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo, useCallback, useRef } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -8,7 +8,7 @@ import { TeamBadge, parseTeams } from "@/components/TeamBadge";
 import { format, subDays, subMonths, startOfDay, endOfDay } from "date-fns";
 import {
   Download, Search, RefreshCw, ArrowLeft,
-  ChevronUp, ChevronDown, ChevronsUpDown, Calendar, Filter, X,
+  ChevronUp, ChevronDown, ChevronsUpDown, Calendar, X,
 } from "lucide-react";
 
 type Tab = "games" | "all" | "lft" | "tixstock";
@@ -183,8 +183,6 @@ export function CategorySalesPage({
   const [timeRange, setTimeRange] = useState<TimeRange>("all");
   const [customFrom, setCustomFrom] = useState("");
   const [customTo, setCustomTo] = useState("");
-  const [showFilters, setShowFilters] = useState(false);
-  const filterRef = useRef<HTMLDivElement>(null);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -479,150 +477,124 @@ export function CategorySalesPage({
               ))}
             </div>
 
-            {/* Filters */}
-            <div className="space-y-3" ref={filterRef}>
-              <div className="flex gap-3 items-center flex-wrap">
-                <div className="relative flex-1 min-w-[180px] max-w-sm">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            {/* Filters — always visible */}
+            <div className="rounded-lg border border-border bg-card p-4 space-y-3">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+
+                {/* Section */}
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Section</label>
                   <Input
-                    placeholder="Search event/section…"
-                    value={search}
-                    onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-                    className="pl-9"
+                    placeholder="e.g. Block M3"
+                    value={sectionFilter}
+                    onChange={(e) => { setSectionFilter(e.target.value); setPage(1); }}
+                    className="h-8 text-sm"
                   />
                 </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setShowFilters((v) => !v)}
-                  className={`gap-1.5 relative ${showFilters ? "border-primary text-primary" : ""}`}
-                >
-                  <Filter className="h-3.5 w-3.5" />
-                  Filters
-                  {activeFilterCount > 0 && (
-                    <span className="absolute -top-1.5 -right-1.5 bg-primary text-primary-foreground text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
-                      {activeFilterCount}
-                    </span>
-                  )}
-                </Button>
+
+                {/* Quantity */}
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Quantity</label>
+                  <div className="flex gap-1.5 items-center">
+                    <Input
+                      type="number"
+                      placeholder="Min"
+                      value={minQty}
+                      min={1}
+                      onChange={(e) => { setMinQty(e.target.value); setPage(1); }}
+                      className="h-8 text-sm"
+                    />
+                    <span className="text-muted-foreground text-xs shrink-0">–</span>
+                    <Input
+                      type="number"
+                      placeholder="Max"
+                      value={maxQty}
+                      min={1}
+                      onChange={(e) => { setMaxQty(e.target.value); setPage(1); }}
+                      className="h-8 text-sm"
+                    />
+                  </div>
+                </div>
+
+                {/* Price */}
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Price (£)</label>
+                  <div className="flex gap-1.5 items-center">
+                    <Input
+                      type="number"
+                      placeholder="Min"
+                      value={minPrice}
+                      min={0}
+                      onChange={(e) => { setMinPrice(e.target.value); setPage(1); }}
+                      className="h-8 text-sm"
+                    />
+                    <span className="text-muted-foreground text-xs shrink-0">–</span>
+                    <Input
+                      type="number"
+                      placeholder="Max"
+                      value={maxPrice}
+                      min={0}
+                      onChange={(e) => { setMaxPrice(e.target.value); setPage(1); }}
+                      className="h-8 text-sm"
+                    />
+                  </div>
+                </div>
+
+                {/* Time Range */}
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Time Range</label>
+                  <div className="flex flex-wrap gap-1">
+                    {(["all", "today", "7d", "30d", "90d", "custom"] as TimeRange[]).map((r) => (
+                      <button
+                        key={r}
+                        onClick={() => { setTimeRange(r); setPage(1); }}
+                        className={`px-2 py-0.5 rounded text-[11px] font-semibold transition-colors border ${
+                          timeRange === r
+                            ? "bg-primary/15 border-primary/50 text-primary"
+                            : "border-border text-muted-foreground hover:text-foreground"
+                        }`}
+                      >
+                        {r === "all" ? "All" : r === "today" ? "Today" : r === "7d" ? "7d" : r === "30d" ? "30d" : r === "90d" ? "90d" : "Custom"}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Custom date range */}
+              {timeRange === "custom" && (
+                <div className="flex gap-3 items-center pt-2 border-t border-border/50">
+                  <Calendar className="h-4 w-4 text-muted-foreground shrink-0" />
+                  <div className="flex gap-2 items-center flex-wrap">
+                    <Input
+                      type="date"
+                      value={customFrom}
+                      onChange={(e) => { setCustomFrom(e.target.value); setPage(1); }}
+                      className="h-8 text-sm w-36"
+                    />
+                    <span className="text-muted-foreground text-xs">to</span>
+                    <Input
+                      type="date"
+                      value={customTo}
+                      onChange={(e) => { setCustomTo(e.target.value); setPage(1); }}
+                      className="h-8 text-sm w-36"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Footer: count + clear + export */}
+              <div className="flex items-center gap-3 pt-1 border-t border-border/50">
+                <span className="text-xs text-muted-foreground">{filteredSales.length} of {sales.length} sales</span>
                 {activeFilterCount > 0 && (
-                  <Button variant="ghost" size="sm" onClick={clearFilters} className="gap-1.5 text-muted-foreground hover:text-foreground h-8 px-2">
-                    <X className="h-3.5 w-3.5" /> Clear
+                  <Button variant="ghost" size="sm" onClick={clearFilters} className="gap-1.5 text-muted-foreground hover:text-foreground h-7 px-2 text-xs">
+                    <X className="h-3 w-3" /> Clear filters
                   </Button>
                 )}
-                <span className="text-sm text-muted-foreground">{filteredSales.length} of {sales.length}</span>
                 <Button variant="outline" size="sm" onClick={exportCSV} className="ml-auto gap-1.5">
                   <Download className="h-3.5 w-3.5" />Export CSV
                 </Button>
               </div>
-
-              {/* Advanced filter panel */}
-              {showFilters && (
-                <div className="rounded-lg border border-border bg-card p-4 space-y-4">
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    {/* Section */}
-                    <div className="space-y-1.5">
-                      <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Section</label>
-                      <Input
-                        placeholder="e.g. Block M3"
-                        value={sectionFilter}
-                        onChange={(e) => { setSectionFilter(e.target.value); setPage(1); }}
-                        className="h-8 text-sm"
-                      />
-                    </div>
-
-                    {/* Quantity */}
-                    <div className="space-y-1.5">
-                      <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Quantity</label>
-                      <div className="flex gap-1.5 items-center">
-                        <Input
-                          type="number"
-                          placeholder="Min"
-                          value={minQty}
-                          min={1}
-                          onChange={(e) => { setMinQty(e.target.value); setPage(1); }}
-                          className="h-8 text-sm w-full"
-                        />
-                        <span className="text-muted-foreground text-xs">–</span>
-                        <Input
-                          type="number"
-                          placeholder="Max"
-                          value={maxQty}
-                          min={1}
-                          onChange={(e) => { setMaxQty(e.target.value); setPage(1); }}
-                          className="h-8 text-sm w-full"
-                        />
-                      </div>
-                    </div>
-
-                    {/* Price */}
-                    <div className="space-y-1.5">
-                      <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Price (£)</label>
-                      <div className="flex gap-1.5 items-center">
-                        <Input
-                          type="number"
-                          placeholder="Min"
-                          value={minPrice}
-                          min={0}
-                          onChange={(e) => { setMinPrice(e.target.value); setPage(1); }}
-                          className="h-8 text-sm w-full"
-                        />
-                        <span className="text-muted-foreground text-xs">–</span>
-                        <Input
-                          type="number"
-                          placeholder="Max"
-                          value={maxPrice}
-                          min={0}
-                          onChange={(e) => { setMaxPrice(e.target.value); setPage(1); }}
-                          className="h-8 text-sm w-full"
-                        />
-                      </div>
-                    </div>
-
-                    {/* Time Range */}
-                    <div className="space-y-1.5">
-                      <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Time Range</label>
-                      <div className="flex flex-wrap gap-1">
-                        {(["all", "today", "7d", "30d", "90d", "custom"] as TimeRange[]).map((r) => (
-                          <button
-                            key={r}
-                            onClick={() => { setTimeRange(r); setPage(1); }}
-                            className={`px-2 py-0.5 rounded text-[11px] font-semibold transition-colors border ${
-                              timeRange === r
-                                ? "bg-primary/15 border-primary/50 text-primary"
-                                : "border-border text-muted-foreground hover:text-foreground hover:border-border/80"
-                            }`}
-                          >
-                            {r === "all" ? "All" : r === "today" ? "Today" : r === "7d" ? "7d" : r === "30d" ? "30d" : r === "90d" ? "90d" : "Custom"}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Custom date range */}
-                  {timeRange === "custom" && (
-                    <div className="flex gap-3 items-center pt-1 border-t border-border/50">
-                      <Calendar className="h-4 w-4 text-muted-foreground shrink-0" />
-                      <div className="flex gap-2 items-center flex-wrap">
-                        <Input
-                          type="date"
-                          value={customFrom}
-                          onChange={(e) => { setCustomFrom(e.target.value); setPage(1); }}
-                          className="h-8 text-sm w-36"
-                        />
-                        <span className="text-muted-foreground text-xs">to</span>
-                        <Input
-                          type="date"
-                          value={customTo}
-                          onChange={(e) => { setCustomTo(e.target.value); setPage(1); }}
-                          className="h-8 text-sm w-36"
-                        />
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
             </div>
 
             {/* Table */}
