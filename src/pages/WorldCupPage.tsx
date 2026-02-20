@@ -1,12 +1,11 @@
-import { useEffect, useState, useMemo, useCallback } from "react";
+import { useEffect, useState, useMemo, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { TeamBadge, parseTeams, resolveTeamColors } from "@/components/TeamBadge";
+import { TeamBadge, parseTeams, resolveTeamColors, getTeamFlag } from "@/components/TeamBadge";
 import { format } from "date-fns";
-import { Search, RefreshCw, Calendar, MapPin, Trophy } from "lucide-react";
+import { ChevronDown, RefreshCw, Calendar, MapPin, Trophy, X } from "lucide-react";
 
 interface WCEvent {
   id: string;
@@ -192,7 +191,20 @@ export default function WorldCupPage() {
   const [loading, setLoading] = useState(true);
   const [roundFilter, setRoundFilter] = useState("All");
   const [teamSearch, setTeamSearch] = useState("");
+  const [dropdownOpen, setDropdownOpen] = useState(false);
   const [updatedAt, setUpdatedAt] = useState(new Date());
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setDropdownOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, []);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -342,16 +354,60 @@ export default function WorldCupPage() {
             })}
           </div>
 
-          {/* Team search */}
-          <div className="relative ml-auto">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-            <Input
-              placeholder="Filter by team…"
-              value={teamSearch}
-              onChange={(e) => setTeamSearch(e.target.value)}
-              className="pl-8 h-8 text-sm w-44"
-            />
+          {/* Team dropdown filter */}
+          <div className="relative ml-auto" ref={dropdownRef}>
+            <button
+              onClick={() => setDropdownOpen((o) => !o)}
+              className="flex items-center gap-2 h-8 px-3 rounded-md border border-border bg-background text-sm font-medium text-foreground hover:bg-secondary transition-colors min-w-[160px] justify-between"
+            >
+              <span className="flex items-center gap-1.5 truncate">
+                {teamSearch ? (
+                  <><span>{getTeamFlag(teamSearch)}</span><span className="truncate">{teamSearch}</span></>
+                ) : (
+                  <span className="text-muted-foreground">Filter by team…</span>
+                )}
+              </span>
+              <ChevronDown className={`h-3.5 w-3.5 flex-shrink-0 transition-transform ${dropdownOpen ? "rotate-180" : ""}`} />
+            </button>
+            {dropdownOpen && (
+              <div
+                className="absolute right-0 top-full mt-1 w-56 rounded-lg border border-border shadow-xl overflow-hidden"
+                style={{ background: "hsl(var(--card))", zIndex: 50 }}
+              >
+                <div className="p-1 max-h-72 overflow-y-auto">
+                  <button
+                    onClick={() => { setTeamSearch(""); setDropdownOpen(false); }}
+                    className="w-full flex items-center gap-2 px-3 py-2 rounded-md text-sm hover:bg-secondary transition-colors text-muted-foreground"
+                  >
+                    All teams
+                  </button>
+                  {allTeams.filter(t => !t.startsWith("Winner") && !t.startsWith("Runner") && !t.startsWith("R32") && !t.startsWith("3rd") && !t.startsWith("SF") && !t.startsWith("QF")).map((team) => (
+                    <button
+                      key={team}
+                      onClick={() => { setTeamSearch(team); setDropdownOpen(false); }}
+                      className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-sm transition-colors ${
+                        teamSearch === team ? "bg-primary/10 text-primary font-semibold" : "hover:bg-secondary text-foreground"
+                      }`}
+                    >
+                      <span className="text-base leading-none">{getTeamFlag(team)}</span>
+                      <span>{team}</span>
+                    </button>
+                  ))}
+                </div>
+                {teamSearch && (
+                  <div className="border-t border-border p-1">
+                    <button
+                      onClick={() => { setTeamSearch(""); setDropdownOpen(false); }}
+                      className="w-full flex items-center gap-2 px-3 py-1.5 rounded-md text-xs text-muted-foreground hover:bg-secondary transition-colors"
+                    >
+                      <X className="h-3 w-3" /> Clear filter
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
+
         </div>
       </div>
 
