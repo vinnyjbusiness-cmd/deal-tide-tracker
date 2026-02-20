@@ -1,11 +1,10 @@
-import { LayoutDashboard, Table2, CalendarDays, PlusCircle, Ticket } from "lucide-react";
+import { Globe, Ticket, BarChart3 } from "lucide-react";
 import { useLocation } from "react-router-dom";
 import {
   Sidebar,
   SidebarContent,
   SidebarGroup,
   SidebarGroupContent,
-  SidebarGroupLabel,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
@@ -14,17 +13,14 @@ import {
 import { NavLink } from "@/components/NavLink";
 
 const navItems = [
-  { title: "Dashboard", url: "/", icon: LayoutDashboard },
-  { title: "Sales Table", url: "/sales", icon: Table2 },
-  { title: "Events", url: "/events", icon: CalendarDays },
-  { title: "Add Sale", url: "/add-sale", icon: PlusCircle },
+  { title: "World Cup", url: "/world-cup", icon: Globe },
+  { title: "Liverpool", url: "/liverpool", icon: Ticket },
+  { title: "Analytics", url: "/analytics", icon: BarChart3 },
 ];
 
 export function AppSidebar() {
   const location = useLocation();
   const currentPath = location.pathname;
-  const isActive = (path: string) =>
-    path === "/" ? currentPath === "/" : currentPath.startsWith(path);
 
   return (
     <Sidebar className="border-r border-sidebar-border">
@@ -42,18 +38,14 @@ export function AppSidebar() {
 
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-3 py-2">
-            Navigation
-          </SidebarGroupLabel>
           <SidebarGroupContent>
-            <SidebarMenu>
+            <SidebarMenu className="mt-2">
               {navItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild>
                     <NavLink
                       to={item.url}
-                      end={item.url === "/"}
-                      className="flex items-center gap-3 px-3 py-2 rounded-md text-sm text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors"
+                      className="flex items-center gap-3 px-3 py-2.5 rounded-md text-sm text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors"
                       activeClassName="bg-sidebar-accent text-primary font-medium"
                     >
                       <item.icon className="h-4 w-4 shrink-0" />
