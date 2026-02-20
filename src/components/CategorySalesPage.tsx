@@ -1,18 +1,19 @@
-import { useEffect, useState, useMemo, useCallback } from "react";
+import { useEffect, useState, useMemo, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { TeamBadge, parseTeams } from "@/components/TeamBadge";
-import { format } from "date-fns";
+import { format, subDays, subMonths, startOfDay, endOfDay } from "date-fns";
 import {
   Download, Search, RefreshCw, ArrowLeft,
-  ChevronUp, ChevronDown, ChevronsUpDown, Calendar,
+  ChevronUp, ChevronDown, ChevronsUpDown, Calendar, Filter, X,
 } from "lucide-react";
 
 type Tab = "games" | "all" | "lft" | "tixstock";
 type HomeAwayFilter = "all" | "home" | "away";
+type TimeRange = "all" | "today" | "7d" | "30d" | "90d" | "custom";
 
 
 interface EventWithStats {
@@ -173,6 +174,18 @@ export function CategorySalesPage({
   const [sortKey, setSortKey] = useState<SortKey>("sold_at");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
 
+  // Advanced filters
+  const [minQty, setMinQty] = useState("");
+  const [maxQty, setMaxQty] = useState("");
+  const [minPrice, setMinPrice] = useState("");
+  const [maxPrice, setMaxPrice] = useState("");
+  const [sectionFilter, setSectionFilter] = useState("");
+  const [timeRange, setTimeRange] = useState<TimeRange>("all");
+  const [customFrom, setCustomFrom] = useState("");
+  const [customTo, setCustomTo] = useState("");
+  const [showFilters, setShowFilters] = useState(false);
+  const filterRef = useRef<HTMLDivElement>(null);
+
   const fetchData = useCallback(async () => {
     setLoading(true);
     const { data: cats } = await supabase
@@ -226,6 +239,20 @@ export function CategorySalesPage({
 
   const selectedEvent = selectedEventId ? events.find((e) => e.id === selectedEventId) : null;
 
+  const getTimeRangeBounds = useCallback((): [Date | null, Date | null] => {
+    const now = new Date();
+    if (timeRange === "today") return [startOfDay(now), endOfDay(now)];
+    if (timeRange === "7d") return [startOfDay(subDays(now, 7)), null];
+    if (timeRange === "30d") return [startOfDay(subDays(now, 30)), null];
+    if (timeRange === "90d") return [startOfDay(subMonths(now, 3)), null];
+    if (timeRange === "custom") {
+      const from = customFrom ? new Date(customFrom) : null;
+      const to = customTo ? endOfDay(new Date(customTo)) : null;
+      return [from, to];
+    }
+    return [null, null];
+  }, [timeRange, customFrom, customTo]);
+
   const filteredSales = useMemo(() => {
     let result = [...sales];
     if (selectedEventId) result = result.filter((s) => s.event_id === selectedEventId);
@@ -237,13 +264,40 @@ export function CategorySalesPage({
         (s) => s.events?.name?.toLowerCase().includes(q) || s.section?.toLowerCase().includes(q)
       );
     }
+    // Section filter
+    if (sectionFilter.trim()) {
+      const sq = sectionFilter.trim().toLowerCase();
+      result = result.filter((s) => s.section?.toLowerCase().includes(sq));
+    }
+    // Qty filters
+    if (minQty !== "") result = result.filter((s) => s.quantity >= Number(minQty));
+    if (maxQty !== "") result = result.filter((s) => s.quantity <= Number(maxQty));
+    // Price filters
+    if (minPrice !== "") result = result.filter((s) => s.ticket_price >= Number(minPrice));
+    if (maxPrice !== "") result = result.filter((s) => s.ticket_price <= Number(maxPrice));
+    // Time range
+    const [from, to] = getTimeRangeBounds();
+    if (from) result = result.filter((s) => new Date(s.sold_at) >= from);
+    if (to) result = result.filter((s) => new Date(s.sold_at) <= to);
+
     result.sort((a, b) => {
       const av = sortKey === "sold_at" ? new Date(a[sortKey]).getTime() : Number(a[sortKey]);
       const bv = sortKey === "sold_at" ? new Date(b[sortKey]).getTime() : Number(b[sortKey]);
       return sortDir === "asc" ? av - bv : bv - av;
     });
     return result;
-  }, [sales, selectedEventId, tab, search, sortKey, sortDir]);
+  }, [sales, selectedEventId, tab, search, sortKey, sortDir, sectionFilter, minQty, maxQty, minPrice, maxPrice, getTimeRangeBounds]);
+
+  const activeFilterCount = [
+    minQty, maxQty, minPrice, maxPrice, sectionFilter,
+    timeRange !== "all" ? "t" : "",
+  ].filter(Boolean).length;
+
+  const clearFilters = () => {
+    setMinQty(""); setMaxQty(""); setMinPrice(""); setMaxPrice("");
+    setSectionFilter(""); setTimeRange("all"); setCustomFrom(""); setCustomTo("");
+    setPage(1);
+  };
 
   const paginated = filteredSales.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
   const totalPages = Math.ceil(filteredSales.length / PAGE_SIZE);
@@ -426,20 +480,149 @@ export function CategorySalesPage({
             </div>
 
             {/* Filters */}
-            <div className="flex gap-3 items-center">
-              <div className="relative flex-1 max-w-sm">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search event/section…"
-                  value={search}
-                  onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-                  className="pl-9"
-                />
+            <div className="space-y-3" ref={filterRef}>
+              <div className="flex gap-3 items-center flex-wrap">
+                <div className="relative flex-1 min-w-[180px] max-w-sm">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search event/section…"
+                    value={search}
+                    onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+                    className="pl-9"
+                  />
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowFilters((v) => !v)}
+                  className={`gap-1.5 relative ${showFilters ? "border-primary text-primary" : ""}`}
+                >
+                  <Filter className="h-3.5 w-3.5" />
+                  Filters
+                  {activeFilterCount > 0 && (
+                    <span className="absolute -top-1.5 -right-1.5 bg-primary text-primary-foreground text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
+                      {activeFilterCount}
+                    </span>
+                  )}
+                </Button>
+                {activeFilterCount > 0 && (
+                  <Button variant="ghost" size="sm" onClick={clearFilters} className="gap-1.5 text-muted-foreground hover:text-foreground h-8 px-2">
+                    <X className="h-3.5 w-3.5" /> Clear
+                  </Button>
+                )}
+                <span className="text-sm text-muted-foreground">{filteredSales.length} of {sales.length}</span>
+                <Button variant="outline" size="sm" onClick={exportCSV} className="ml-auto gap-1.5">
+                  <Download className="h-3.5 w-3.5" />Export CSV
+                </Button>
               </div>
-              <span className="text-sm text-muted-foreground">{filteredSales.length} of {sales.length}</span>
-              <Button variant="outline" size="sm" onClick={exportCSV} className="ml-auto gap-1.5">
-                <Download className="h-3.5 w-3.5" />Export CSV
-              </Button>
+
+              {/* Advanced filter panel */}
+              {showFilters && (
+                <div className="rounded-lg border border-border bg-card p-4 space-y-4">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    {/* Section */}
+                    <div className="space-y-1.5">
+                      <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Section</label>
+                      <Input
+                        placeholder="e.g. Block M3"
+                        value={sectionFilter}
+                        onChange={(e) => { setSectionFilter(e.target.value); setPage(1); }}
+                        className="h-8 text-sm"
+                      />
+                    </div>
+
+                    {/* Quantity */}
+                    <div className="space-y-1.5">
+                      <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Quantity</label>
+                      <div className="flex gap-1.5 items-center">
+                        <Input
+                          type="number"
+                          placeholder="Min"
+                          value={minQty}
+                          min={1}
+                          onChange={(e) => { setMinQty(e.target.value); setPage(1); }}
+                          className="h-8 text-sm w-full"
+                        />
+                        <span className="text-muted-foreground text-xs">–</span>
+                        <Input
+                          type="number"
+                          placeholder="Max"
+                          value={maxQty}
+                          min={1}
+                          onChange={(e) => { setMaxQty(e.target.value); setPage(1); }}
+                          className="h-8 text-sm w-full"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Price */}
+                    <div className="space-y-1.5">
+                      <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Price (£)</label>
+                      <div className="flex gap-1.5 items-center">
+                        <Input
+                          type="number"
+                          placeholder="Min"
+                          value={minPrice}
+                          min={0}
+                          onChange={(e) => { setMinPrice(e.target.value); setPage(1); }}
+                          className="h-8 text-sm w-full"
+                        />
+                        <span className="text-muted-foreground text-xs">–</span>
+                        <Input
+                          type="number"
+                          placeholder="Max"
+                          value={maxPrice}
+                          min={0}
+                          onChange={(e) => { setMaxPrice(e.target.value); setPage(1); }}
+                          className="h-8 text-sm w-full"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Time Range */}
+                    <div className="space-y-1.5">
+                      <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Time Range</label>
+                      <div className="flex flex-wrap gap-1">
+                        {(["all", "today", "7d", "30d", "90d", "custom"] as TimeRange[]).map((r) => (
+                          <button
+                            key={r}
+                            onClick={() => { setTimeRange(r); setPage(1); }}
+                            className={`px-2 py-0.5 rounded text-[11px] font-semibold transition-colors border ${
+                              timeRange === r
+                                ? "bg-primary/15 border-primary/50 text-primary"
+                                : "border-border text-muted-foreground hover:text-foreground hover:border-border/80"
+                            }`}
+                          >
+                            {r === "all" ? "All" : r === "today" ? "Today" : r === "7d" ? "7d" : r === "30d" ? "30d" : r === "90d" ? "90d" : "Custom"}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Custom date range */}
+                  {timeRange === "custom" && (
+                    <div className="flex gap-3 items-center pt-1 border-t border-border/50">
+                      <Calendar className="h-4 w-4 text-muted-foreground shrink-0" />
+                      <div className="flex gap-2 items-center flex-wrap">
+                        <Input
+                          type="date"
+                          value={customFrom}
+                          onChange={(e) => { setCustomFrom(e.target.value); setPage(1); }}
+                          className="h-8 text-sm w-36"
+                        />
+                        <span className="text-muted-foreground text-xs">to</span>
+                        <Input
+                          type="date"
+                          value={customTo}
+                          onChange={(e) => { setCustomTo(e.target.value); setPage(1); }}
+                          className="h-8 text-sm w-36"
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Table */}
