@@ -22,6 +22,7 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { title: "Liverpool", url: "/liverpool", badge: "Liverpool" },
+  { title: "Arsenal", url: "/arsenal", badge: "Arsenal" },
   { title: "World Cup", url: "/world-cup", icon: Globe },
   { title: "Health", url: "/health", icon: Activity },
 ];
