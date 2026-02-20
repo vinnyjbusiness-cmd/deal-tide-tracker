@@ -8,6 +8,7 @@ import { AppSidebar } from "@/components/AppSidebar";
 import { AuthGuard } from "@/components/AuthGuard";
 import WorldCupPage from "./pages/WorldCupPage";
 import LiverpoolPage from "./pages/LiverpoolPage";
+import ArsenalPage from "./pages/ArsenalPage";
 import HealthPage from "./pages/HealthPage";
 import NotFound from "./pages/NotFound";
 
@@ -40,6 +41,7 @@ const App = () => (
             <Routes>
               <Route path="/" element={<Navigate to="/liverpool" replace />} />
               <Route path="/liverpool" element={<LiverpoolPage />} />
+              <Route path="/arsenal" element={<ArsenalPage />} />
               <Route path="/world-cup" element={<WorldCupPage />} />
               <Route path="/health" element={<HealthPage />} />
               <Route path="*" element={<NotFound />} />

@@ -47,9 +47,18 @@ function PlatformBadge({ platform }: { platform: string }) {
   return <span className="px-2 py-0.5 rounded text-[11px] font-bold" style={{ background: "hsl(200,80%,12%)", color: "hsl(200,80%,60%)", border: "1px solid hsl(200,80%,25%)" }}>TIXSTOCK</span>;
 }
 
-function EventCard({ ev, onClick }: { ev: EventWithStats; onClick: () => void }) {
+function EventCard({ ev, onClick, homeTeam }: { ev: EventWithStats; onClick: () => void; homeTeam?: string }) {
   const [home, away] = parseTeams(ev.name);
   const slug = ev.name.toUpperCase().replace(/\s+VS\.?\s+/i, "-VS-").replace(/\s/g, "-").slice(0, 22);
+
+  // For club pages, determine if this team is playing at home or away
+  const isHome = homeTeam ? home.toLowerCase().includes(homeTeam.toLowerCase()) : null;
+  const matchLabel = isHome === true ? "HOME" : isHome === false ? "AWAY" : null;
+  const matchLabelStyle = isHome === true
+    ? { background: "hsl(142,72%,15%)", color: "hsl(142,72%,55%)", border: "1px solid hsl(142,72%,30%)" }
+    : isHome === false
+    ? { background: "hsl(220,80%,15%)", color: "hsl(220,80%,65%)", border: "1px solid hsl(220,80%,30%)" }
+    : undefined;
 
   return (
     <Card
@@ -58,9 +67,16 @@ function EventCard({ ev, onClick }: { ev: EventWithStats; onClick: () => void })
     >
       <CardContent className="p-5">
         <div className="flex items-start justify-between mb-3">
-          <span className="text-[10px] font-bold text-muted-foreground tracking-wider px-2 py-0.5 rounded bg-secondary">
-            {slug}
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] font-bold text-muted-foreground tracking-wider px-2 py-0.5 rounded bg-secondary">
+              {slug}
+            </span>
+            {matchLabel && (
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded" style={matchLabelStyle}>
+                {matchLabel}
+              </span>
+            )}
+          </div>
           {ev.revenue > 0 && (
             <span className="text-[12px] font-bold" style={{ color: "hsl(142,72%,55%)" }}>
               +{fmt(ev.revenue)}
@@ -70,7 +86,10 @@ function EventCard({ ev, onClick }: { ev: EventWithStats; onClick: () => void })
 
         {/* Team Badges */}
         <div className="flex items-center gap-3 mb-3">
-          <TeamBadge name={home} size={40} />
+          <div className="flex flex-col items-center gap-1">
+            <TeamBadge name={home} size={40} />
+            <span className="text-[9px] text-muted-foreground font-semibold">HOME</span>
+          </div>
           <div className="flex-1 min-w-0">
             <p className="font-bold text-foreground text-sm leading-tight group-hover:text-primary transition-colors">
               {ev.name}
@@ -82,7 +101,12 @@ function EventCard({ ev, onClick }: { ev: EventWithStats; onClick: () => void })
               </p>
             )}
           </div>
-          {away && <TeamBadge name={away} size={40} />}
+          {away && (
+            <div className="flex flex-col items-center gap-1">
+              <TeamBadge name={away} size={40} />
+              <span className="text-[9px] text-muted-foreground font-semibold">AWAY</span>
+            </div>
+          )}
         </div>
 
         {/* Stats */}
@@ -108,9 +132,11 @@ function EventCard({ ev, onClick }: { ev: EventWithStats; onClick: () => void })
 export function CategorySalesPage({
   categoryKeyword,
   title,
+  homeTeam,
 }: {
   categoryKeyword: string;
   title: string;
+  homeTeam?: string;
 }) {
   const [tab, setTab] = useState<Tab>("games");
   const [events, setEvents] = useState<EventWithStats[]>([]);
@@ -314,6 +340,7 @@ export function CategorySalesPage({
                   <EventCard
                     key={ev.id}
                     ev={ev}
+                    homeTeam={homeTeam}
                     onClick={() => { setSelectedEventId(ev.id); setTab("all"); setSearch(""); setPage(1); }}
                   />
                 ))}
