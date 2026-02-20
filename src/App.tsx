@@ -8,7 +8,7 @@ import { AppSidebar } from "@/components/AppSidebar";
 import { AuthGuard } from "@/components/AuthGuard";
 import WorldCupPage from "./pages/WorldCupPage";
 import LiverpoolPage from "./pages/LiverpoolPage";
-import AnalyticsPage from "./pages/AnalyticsPage";
+import HealthPage from "./pages/HealthPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -17,11 +17,11 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => (
   <SidebarProvider>
     <div className="min-h-screen flex w-full bg-background">
       <AppSidebar />
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         <header className="h-12 flex items-center border-b border-border px-4 gap-3 shrink-0">
           <SidebarTrigger className="text-muted-foreground hover:text-foreground" />
         </header>
-        <main className="flex-1 overflow-auto">
+        <main className="flex-1 overflow-hidden flex flex-col">
           {children}
         </main>
       </div>
@@ -38,10 +38,10 @@ const App = () => (
         <AuthGuard>
           <AppLayout>
             <Routes>
-              <Route path="/" element={<Navigate to="/world-cup" replace />} />
-              <Route path="/world-cup" element={<WorldCupPage />} />
+              <Route path="/" element={<Navigate to="/liverpool" replace />} />
               <Route path="/liverpool" element={<LiverpoolPage />} />
-              <Route path="/analytics" element={<AnalyticsPage />} />
+              <Route path="/world-cup" element={<WorldCupPage />} />
+              <Route path="/health" element={<HealthPage />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </AppLayout>

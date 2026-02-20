@@ -1,4 +1,4 @@
-import { Globe, Ticket, BarChart3 } from "lucide-react";
+import { Globe, Activity, LucideIcon } from "lucide-react";
 import { useLocation } from "react-router-dom";
 import {
   Sidebar,
@@ -11,24 +11,29 @@ import {
   SidebarHeader,
 } from "@/components/ui/sidebar";
 import { NavLink } from "@/components/NavLink";
+import { TeamBadge } from "@/components/TeamBadge";
 
-const navItems = [
+interface NavItem {
+  title: string;
+  url: string;
+  badge?: string; // team name for TeamBadge
+  icon?: LucideIcon;
+}
+
+const navItems: NavItem[] = [
+  { title: "Liverpool", url: "/liverpool", badge: "Liverpool" },
   { title: "World Cup", url: "/world-cup", icon: Globe },
-  { title: "Liverpool", url: "/liverpool", icon: Ticket },
-  { title: "Analytics", url: "/analytics", icon: BarChart3 },
+  { title: "Health", url: "/health", icon: Activity },
 ];
 
 export function AppSidebar() {
   const location = useLocation();
-  const currentPath = location.pathname;
 
   return (
     <Sidebar className="border-r border-sidebar-border">
       <SidebarHeader className="px-4 py-5 border-b border-sidebar-border">
         <div className="flex items-center gap-2.5">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
-            <Ticket className="h-4 w-4 text-primary-foreground" />
-          </div>
+          <TeamBadge name="Liverpool" size={32} />
           <div>
             <p className="text-sm font-bold text-sidebar-foreground leading-none">TicketTrack</p>
             <p className="text-[11px] text-muted-foreground mt-0.5">Sales Dashboard</p>
@@ -46,9 +51,13 @@ export function AppSidebar() {
                     <NavLink
                       to={item.url}
                       className="flex items-center gap-3 px-3 py-2.5 rounded-md text-sm text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors"
-                      activeClassName="bg-sidebar-accent text-primary font-medium"
+                      activeClassName="bg-sidebar-accent text-primary font-semibold"
                     >
-                      <item.icon className="h-4 w-4 shrink-0" />
+                      {item.badge ? (
+                        <TeamBadge name={item.badge} size={20} />
+                      ) : item.icon ? (
+                        <item.icon className="h-4 w-4 shrink-0" />
+                      ) : null}
                       <span>{item.title}</span>
                     </NavLink>
                   </SidebarMenuButton>
