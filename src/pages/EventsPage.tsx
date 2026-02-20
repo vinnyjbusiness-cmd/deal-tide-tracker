@@ -126,8 +126,8 @@ export default function EventsPage() {
                         <td className="px-4 py-3">{s.quantity}</td>
                         <td className="px-4 py-3 font-medium">{fmt(s.ticket_price)}</td>
                         <td className="px-4 py-3">
-                          <Badge variant="outline" className={s.platform === "LiveFootballTickets" ? "text-primary border-primary/30" : "text-chart-2 border-chart-2/30"}>
-                            {s.platform === "LiveFootballTickets" ? "LFT" : "Tixstock"}
+                          <Badge variant="outline" className={s.platform === "LiveFootballTickets" ? "text-primary border-primary/30" : s.platform === "Fanpass" ? "text-chart-4 border-chart-4/30" : "text-chart-2 border-chart-2/30"}>
+                            {s.platform === "LiveFootballTickets" ? "LFT" : s.platform === "Fanpass" ? "Fanpass" : "Tixstock"}
                           </Badge>
                         </td>
                         <td className="px-4 py-3 text-muted-foreground text-xs">{format(new Date(s.sold_at), "dd MMM yy, HH:mm")}</td>

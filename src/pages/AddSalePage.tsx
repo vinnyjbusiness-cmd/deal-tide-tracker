@@ -17,7 +17,7 @@ const saleSchema = z.object({
   section: z.string().optional(),
   quantity: z.coerce.number().int().min(1, "Quantity must be at least 1"),
   ticket_price: z.coerce.number().min(0.01, "Price must be greater than 0"),
-  platform: z.enum(["LiveFootballTickets", "Tixstock"]),
+  platform: z.enum(["LiveFootballTickets", "Tixstock", "Fanpass"]),
   sold_at: z.string().min(1, "Date is required"),
   notes: z.string().optional(),
 });
@@ -87,7 +87,7 @@ export default function AddSalePage() {
       const [eventName, , section, quantity, price, platform, dateStr] = row;
       const ev = events.find((e) => e.name.toLowerCase() === eventName?.toLowerCase());
       if (!ev) continue;
-      const plt = platform === "LFT" || platform === "LiveFootballTickets" ? "LiveFootballTickets" : "Tixstock";
+      const plt = platform === "LFT" || platform === "LiveFootballTickets" ? "LiveFootballTickets" : platform === "Fanpass" ? "Fanpass" : "Tixstock";
       await supabase.from("sales").insert({
         event_id: ev.id,
         section: section || null,
@@ -161,13 +161,14 @@ export default function AddSalePage() {
               </div>
               <div className="space-y-2">
                 <Label>Platform</Label>
-                <Select onValueChange={(v) => setValue("platform", v as "LiveFootballTickets" | "Tixstock")}>
+                <Select onValueChange={(v) => setValue("platform", v as "LiveFootballTickets" | "Tixstock" | "Fanpass")}>
                   <SelectTrigger className={platformValue ? "" : "text-muted-foreground"}>
                     <SelectValue placeholder="Select platform…" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="LiveFootballTickets">LiveFootballTickets</SelectItem>
                     <SelectItem value="Tixstock">Tixstock</SelectItem>
+                    <SelectItem value="Fanpass">Fanpass</SelectItem>
                   </SelectContent>
                 </Select>
                 {errors.platform && <p className="text-xs text-destructive">{errors.platform.message}</p>}
