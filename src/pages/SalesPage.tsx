@@ -189,10 +189,10 @@ export default function SalesPage() {
       <div className="flex flex-wrap gap-2 items-center">
         <Select value={category} onValueChange={(v) => { setCategory(v); setPage(1); }}>
           <SelectTrigger className="w-[160px] h-9 text-xs">
-            <SelectValue placeholder="All categories" />
+            <SelectValue placeholder="All clubs" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All categories</SelectItem>
+            <SelectItem value="all">All clubs</SelectItem>
             {categories.map((c) => <SelectItem key={c.id} value={c.name}>{c.name}</SelectItem>)}
           </SelectContent>
         </Select>
