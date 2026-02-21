@@ -16,6 +16,7 @@ import HeatmapPage from "./pages/analytics/HeatmapPage";
 import TopGamesPage from "./pages/analytics/TopGamesPage";
 import RiskPage from "./pages/analytics/RiskPage";
 import VelocityPage from "./pages/analytics/VelocityPage";
+import SalesPage from "./pages/SalesPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -55,6 +56,7 @@ const App = () => (
               <Route path="/liverpool" element={<LiverpoolPage />} />
               <Route path="/arsenal" element={<ArsenalPage />} />
               <Route path="/world-cup" element={<WorldCupPage />} />
+              <Route path="/sales" element={<SalesPage />} />
               <Route path="/health" element={<HealthPage />} />
               <Route path="*" element={<NotFound />} />
             </Routes>

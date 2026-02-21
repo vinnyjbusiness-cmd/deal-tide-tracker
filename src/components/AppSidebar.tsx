@@ -1,5 +1,5 @@
 import {
-  Globe, Activity, LucideIcon, BarChart2, Flame,
+  Globe, Activity, LucideIcon, BarChart2, Flame, Receipt,
   ChevronDown, ChevronRight, Layers, Trophy, ShieldAlert, Zap,
 } from "lucide-react";
 import { useLocation } from "react-router-dom";
@@ -38,6 +38,10 @@ const eventsItems: NavItem[] = [
   { title: "Liverpool", url: "/liverpool", badge: "Liverpool" },
   { title: "Arsenal", url: "/arsenal", badge: "Arsenal" },
   { title: "World Cup", url: "/world-cup", icon: Globe },
+];
+
+const salesItems: NavItem[] = [
+  { title: "Sales", url: "/sales", icon: Receipt },
 ];
 
 const systemItems: NavItem[] = [
@@ -113,6 +117,13 @@ export function AppSidebar() {
         <SidebarGroup>
           <SidebarGroupContent>
             <CollapsibleSection label="Analytics" items={analyticsItems} defaultOpen={true} />
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        <SidebarGroup>
+          <SidebarGroupContent>
+            <p className="px-3 py-1.5 text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Sales</p>
+            <NavItemList items={salesItems} />
           </SidebarGroupContent>
         </SidebarGroup>
 
