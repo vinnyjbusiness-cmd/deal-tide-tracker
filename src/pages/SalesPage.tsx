@@ -82,11 +82,22 @@ export default function SalesPage() {
   useEffect(() => {
     const fetchSales = async () => {
       setLoading(true);
-      const { data, error } = await supabase
-        .from("sales")
-        .select("*, events(name, categories(name))")
-        .order("sold_at", { ascending: false });
-      if (!error) setSales((data as Sale[]) ?? []);
+      // Fetch all sales using pagination to avoid the 1000-row default limit
+      let allSales: Sale[] = [];
+      let from = 0;
+      const batchSize = 1000;
+      while (true) {
+        const { data: batch, error } = await supabase
+          .from("sales")
+          .select("*, events(name, categories(name))")
+          .order("sold_at", { ascending: false })
+          .range(from, from + batchSize - 1);
+        if (error) break;
+        allSales = allSales.concat((batch as Sale[]) ?? []);
+        if (!batch || batch.length < batchSize) break;
+        from += batchSize;
+      }
+      setSales(allSales);
       setLoading(false);
     };
     fetchSales();
