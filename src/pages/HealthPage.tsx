@@ -52,7 +52,7 @@ export default function HealthPage() {
 
   const addLog = (level: LogEntry["level"], msg: string) => {
     const time = format(new Date(), "HH:mm:ss");
-    setLogs((prev) => [...prev, { time, level, msg }]);
+    setLogs((prev) => [...prev, { id: crypto.randomUUID(), time, level, msg }]);
     setTimeout(() => {
       consoleRef.current?.scrollTo({ top: consoleRef.current.scrollHeight, behavior: "smooth" });
     }, 50);
@@ -99,7 +99,7 @@ export default function HealthPage() {
   };
 
   const loadServiceHealth = async () => {
-    const { data } = await supabase.from('service_health').select('*');
+    const { data } = await (supabase.from as any)('service_health').select('*');
     if (data) {
       setServices(data.map(d => ({
         name: d.service_name,
@@ -111,7 +111,7 @@ export default function HealthPage() {
   };
 
   const loadInitialLogs = async () => {
-    const { data } = await supabase.from('health_logs').select('*').order('created_at', { ascending: false }).limit(50);
+    const { data } = await (supabase.from as any)('health_logs').select('*').order('created_at', { ascending: false }).limit(50);
     if (data) {
       setLogs(data.reverse().map(d => ({
         id: d.id,
