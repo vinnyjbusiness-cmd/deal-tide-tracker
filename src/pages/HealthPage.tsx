@@ -15,6 +15,7 @@ interface HealthItem {
 }
 
 interface LogEntry {
+  id: string;
   time: string;
   level: "INFO" | "WARN" | "ERROR";
   msg: string;
@@ -61,89 +62,132 @@ export default function HealthPage() {
     setHealth((prev) => prev.map((h) => (h.id === id ? { ...h, ...patch } : h)));
   };
 
+  const fetchHealthStatuses = async () => {
+    addLog("INFO", "Fetching health statuses...");
+    // 1. Database
+    try {
+      const { error } = await supabase.from("categories").select("id").limit(1);
+      if (error) throw error;
+      updateHealth("db", { status: "ok", detail: "Connected" });
+    } catch {
+      updateHealth("db", { status: "error", detail: "Connection failed" });
+    }
+
+    // 2. Auth
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        updateHealth("auth", { status: "ok", detail: `Active session (${session.user.email})` });
+      } else {
+        updateHealth("auth", { status: "warn", detail: "No active session" });
+      }
+    } catch {
+      updateHealth("auth", { status: "error", detail: "Auth check failed" });
+    }
+
+    // 3. Data integrity
+    try {
+      const { count: orphaned } = await supabase.from("sales").select("*", { count: "exact", head: true }).is("event_id", null);
+      if ((orphaned ?? 0) > 0) {
+        updateHealth("data", { status: "warn", detail: `${orphaned} orphaned sales detected` });
+      } else {
+        updateHealth("data", { status: "ok", detail: "All references valid" });
+      }
+    } catch {
+      updateHealth("data", { status: "error", detail: "Check failed" });
+    }
+  };
+
+  const loadServiceHealth = async () => {
+    const { data } = await supabase.from('service_health').select('*');
+    if (data) {
+      setServices(data.map(d => ({
+        name: d.service_name,
+        status: d.status as Status,
+        detail: d.detail || (d.status === 'ok' ? "Service running" : "Check status"),
+        last_seen: d.last_seen
+      })));
+    }
+  };
+
+  const loadInitialLogs = async () => {
+    const { data } = await supabase.from('health_logs').select('*').order('created_at', { ascending: false }).limit(50);
+    if (data) {
+      setLogs(data.reverse().map(d => ({
+        id: d.id,
+        time: format(new Date(d.created_at), "HH:mm:ss"),
+        level: d.level as any,
+        msg: `[${d.service_name}] ${d.message}`
+      })));
+      setTimeout(() => {
+        consoleRef.current?.scrollTo({ top: consoleRef.current.scrollHeight, behavior: "smooth" });
+      }, 50);
+    }
+  };
+
   const runChecks = async () => {
     if (running) return;
     setRunning(true);
-    setLogs([]);
     setHealth([
       { id: "db", label: "Database Connection", detail: "Checking…", status: "pending" },
       { id: "auth", label: "Authentication", detail: "Checking…", status: "pending" },
       { id: "data", label: "Data Integrity", detail: "Checking…", status: "pending" },
     ]);
 
-    addLog("INFO", "Starting health check…");
+    await fetchHealthStatuses();
+    await loadServiceHealth();
 
-    // 1. Database
-    addLog("INFO", "Checking database connection…");
-    const t0 = Date.now();
-    try {
-      const { error } = await supabase.from("categories").select("id").limit(1);
-      const ms = Date.now() - t0;
-      if (error) throw error;
-      addLog("INFO", `Database responded in ${ms}ms`);
-      updateHealth("db", { status: "ok", detail: `Connected (${ms}ms)` });
-    } catch {
-      addLog("ERROR", "Database connection failed");
-      updateHealth("db", { status: "error", detail: "Connection failed" });
-    }
-
-    // 2. Auth
-    addLog("INFO", "Checking authentication session…");
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
-        addLog("INFO", `Active session: ${session.user.email}`);
-        updateHealth("auth", { status: "ok", detail: `Active session (${session.user.email})` });
-      } else {
-        addLog("WARN", "No active session found");
-        updateHealth("auth", { status: "warn", detail: "No active session" });
-      }
-    } catch {
-      addLog("ERROR", "Auth check failed");
-      updateHealth("auth", { status: "error", detail: "Auth check failed" });
-    }
-
-    // 3. Data integrity
-    addLog("INFO", "Checking data integrity…");
-    try {
-      const { count: salesCount } = await supabase.from("sales").select("*", { count: "exact", head: true });
-      const { count: eventsCount } = await supabase.from("events").select("*", { count: "exact", head: true });
-      const { count: orphaned } = await supabase.from("sales").select("*", { count: "exact", head: true }).is("event_id", null);
-
-      addLog("INFO", `Found ${salesCount ?? 0} sales across ${eventsCount ?? 0} events`);
-
-      if ((orphaned ?? 0) > 0) {
-        addLog("WARN", `${orphaned} sales have no linked event`);
-        updateHealth("data", { status: "warn", detail: `${orphaned} orphaned sales detected` });
-      } else {
-        addLog("INFO", "All references valid");
-        updateHealth("data", { status: "ok", detail: "All references valid" });
-      }
-    } catch {
-      addLog("ERROR", "Data integrity check failed");
-      updateHealth("data", { status: "error", detail: "Check failed" });
-    }
-
-    addLog("INFO", "Health check complete");
     setLastChecked(new Date());
     setRunning(false);
   };
 
-  useEffect(() => { runChecks(); }, []);
+  const [services, setServices] = useState<{ name: string, status: Status, detail: string, last_seen: string }[]>([]);
+
+  useEffect(() => {
+    runChecks();
+    loadInitialLogs();
+
+    const channel1 = supabase.channel('service-health-rt')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'service_health' }, () => {
+        loadServiceHealth();
+      })
+      .subscribe();
+
+    const channel2 = supabase.channel('health-logs-rt')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'health_logs' }, (payload) => {
+        const d = payload.new as any;
+        const time = format(new Date(d.created_at || Date.now()), "HH:mm:ss");
+        setLogs(prev => [...prev.slice(-100), {
+          id: d.id,
+          time,
+          level: d.level,
+          msg: `[${d.service_name}] ${d.message}`
+        }]);
+        setTimeout(() => {
+          consoleRef.current?.scrollTo({ top: consoleRef.current.scrollHeight, behavior: "smooth" });
+        }, 50);
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel1);
+      supabase.removeChannel(channel2);
+    };
+  }, []);
 
   const overallStatus = health.every((h) => h.status === "ok")
     ? "Healthy"
     : health.some((h) => h.status === "error")
-    ? "Unhealthy"
-    : health.some((h) => h.status === "warn")
-    ? "Warning"
-    : "Checking…";
+      ? "Unhealthy"
+      : health.some((h) => h.status === "warn")
+        ? "Warning"
+        : "Checking…";
 
   const overallColor =
     overallStatus === "Healthy" ? "hsl(142,72%,55%)" :
-    overallStatus === "Warning" ? "hsl(35,90%,55%)" :
-    overallStatus === "Unhealthy" ? "hsl(0,84%,60%)" :
-    "hsl(215,16%,55%)";
+      overallStatus === "Warning" ? "hsl(35,90%,55%)" :
+        overallStatus === "Unhealthy" ? "hsl(0,84%,60%)" :
+          "hsl(215,16%,55%)";
 
   return (
     <div className="p-6 space-y-6 max-w-4xl">
@@ -189,16 +233,16 @@ export default function HealthPage() {
 
       {/* Platform Status Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {[
-          { name: "LiveFootballTickets (LFT)", status: "ok" as Status, detail: "API connection active" },
-          { name: "Tixstock", status: "ok" as Status, detail: "Data sync active" },
-        ].map((p) => (
+        {services.length === 0 ? (
+          <p className="text-sm text-muted-foreground col-span-2 py-4">Waiting for services to report health...</p>
+        ) : services.map((p) => (
           <Card key={p.name}>
             <CardContent className="p-4 flex items-center gap-3">
               <ShieldCheck className="h-5 w-5 text-muted-foreground shrink-0" />
               <div className="flex-1">
-                <p className="text-sm font-medium text-foreground">{p.name}</p>
-                <p className="text-xs text-muted-foreground">{p.detail}</p>
+                <p className="text-sm font-medium text-foreground capitalize">{p.name}</p>
+                <p className="text-xs text-muted-foreground line-clamp-1">{p.detail}</p>
+                <p className="text-[10px] text-muted-foreground/60 mt-1">Last seen: {format(new Date(p.last_seen), "HH:mm:ss")}</p>
               </div>
               <StatusIcon status={p.status} />
             </CardContent>
@@ -227,9 +271,9 @@ export default function HealthPage() {
             style={{ background: "hsl(222,25%,5%)", borderRadius: "0 0 0.5rem 0.5rem" }}
           >
             {logs.length === 0 ? (
-              <span className="text-muted-foreground">Running checks…</span>
+              <span className="text-muted-foreground">Waiting for live data...</span>
             ) : (
-              logs.map((l, i) => <LogLine key={i} entry={l} />)
+              logs.map((l, i) => <LogLine key={l.id || i} entry={l} />)
             )}
           </div>
         </CardContent>
